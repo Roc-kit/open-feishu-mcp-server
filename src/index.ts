@@ -18,6 +18,7 @@ import { sheetRangeRead, sheetInfoGet,sheetPatch, sheetRangeWrite } from './tool
 import { suiteSearch } from './tools/suite';
 import { docxMarkdownInsert } from './tools/document';
 import { registerPersonalReadTools } from './tools/personal-read';
+import { registerCompatibilityTools } from './tools/compatibility';
 
 import {
   registerTools,
@@ -26,7 +27,6 @@ import {
   // docx
   createDocument,
   getDocument,
-  getDocumentRawContent,
   convertContentToBlocks,
   // docx blocks
   listDocumentBlocks,
@@ -51,7 +51,6 @@ import {
   buildCodeBlock,
   buildDividerBlock,
   buildCalloutBlock,
-  searchFeishuCalloutEmoji,
   createFileBlock,
   createImageBlock,
   buildIframeBlock,
@@ -110,7 +109,6 @@ export class MyMCP extends McpAgent<Props, Env> {
       // docx
       createDocument,
       getDocument,
-      getDocumentRawContent,
       convertContentToBlocks,
       // docx blocks
       listDocumentBlocks,
@@ -135,7 +133,6 @@ export class MyMCP extends McpAgent<Props, Env> {
       buildCodeBlock,
       buildDividerBlock,
       buildCalloutBlock,
-      searchFeishuCalloutEmoji,
       createFileBlock,
       createImageBlock,
       buildIframeBlock,
@@ -164,6 +161,7 @@ export class MyMCP extends McpAgent<Props, Env> {
     ];
 
     registerTools(this.server, allTools, context);
+    registerCompatibilityTools(this.server, () => this.props.accessToken as string);
     registerPersonalReadTools(this.server, () => this.props.accessToken as string);
   }
 }

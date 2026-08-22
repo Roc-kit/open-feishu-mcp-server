@@ -14,6 +14,10 @@ const FEISHU_USER_SCOPES = [
 	"docx:document:readonly",
 	"docx:document",
 	"docx:document:create",
+	"docx:document.block:convert",
+	"drive:drive",
+	"drive:file:upload",
+	"sheets:spreadsheet",
 	"task:task:read",
 	"calendar:calendar.event:read"
 ] as const;

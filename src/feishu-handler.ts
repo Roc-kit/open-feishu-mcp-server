@@ -32,11 +32,13 @@ app.get('/.well-known/oauth-protected-resource', async (c) => {
 		introspection_endpoint: `${baseUrl}/introspect`,
 		introspection_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post"],
 		
-		// Minimal scopes for the first PoC: identify user + refresh token + read Docx content.
+		// Personal read PoC: identity + refresh token + Docs + Tasks + Calendar events.
 		scopes_supported: [
 			"auth:user.id:read",
 			"offline_access",
-			"docx:document:readonly"
+			"docx:document:readonly",
+			"task:task:read",
+			"calendar:calendar.event:read"
 		],
 		
 		// Bearer token usage
@@ -92,7 +94,7 @@ async function redirectToFeishu(request: Request, oauthReqInfo: AuthRequest, hea
 			...headers,
 			location: getUpstreamAuthorizeUrl({
 				upstream_url: 'https://open.feishu.cn/open-apis/authen/v1/authorize',
-				scope: 'auth:user.id:read offline_access docx:document:readonly',
+				scope: 'auth:user.id:read offline_access docx:document:readonly task:task:read calendar:calendar.event:read',
 				client_id: env.FEISHU_APP_ID,
 				redirect_uri: new URL('/callback', request.url).href,
 				state: btoa(JSON.stringify(oauthReqInfo)),

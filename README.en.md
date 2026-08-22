@@ -1,4 +1,3 @@
-[![MCP Badge](https://lobehub.com/badge/mcp/ztxtxwd-open-feishu-mcp-server)](https://lobehub.com/mcp/ztxtxwd-open-feishu-mcp-server)
 # Feishu MCP Server
 
 [中文文档](README.md)
@@ -7,11 +6,11 @@ This is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introdu
 
 This project is modified from [cloudflare/ai/demos/remote-mcp-github-oauth](https://github.com/cloudflare/ai/tree/main/demos/remote-mcp-github-oauth), replacing GitHub OAuth with Feishu OAuth.
 
-You can deploy it to your own Cloudflare account, and after creating your own Feishu OAuth client application, you'll have a fully functional remote MCP server. Users can connect to your MCP server by logging in with their Feishu account.
+You can deploy it to your own Cloudflare account and use it after signing in with Feishu OAuth. The current implementation covers core read/write operations for Docs, Sheets, Bitable, group messages, and Tasks; see “Implemented Tools” below for the exact scope.
 
 ## 📋 Table of Contents
 
-- [Comparison with Official Feishu MCP Server](#-comparison-with-official-feishu-mcp-server)
+- [Project Positioning](#-project-positioning)
 - [Features](#-features)
 - [Quick Start](#-quick-start)
 - [Deployment Methods](#-deployment-methods)
@@ -22,40 +21,32 @@ You can deploy it to your own Cloudflare account, and after creating your own Fe
   - [Using Cursor](#using-cursor)
   - [Using ChatWise](#using-chatwise)
 - [Access Control](#-access-control)
-- [Tool Development Roadmap](#-tool-development-roadmap)
+- [Implemented Tools](#-implemented-tools)
 - [Technical Architecture](#-technical-architecture)
 - [Development Guide](#-development-guide)
 
-## 🆚 Comparison with Official Feishu MCP Server
+## 🆚 Project Positioning
 
-While Feishu officially released an MCP Server, this project has significant advantages in the following areas:
-
-### 🎯 Zero-Configuration Experience
-- **This Project**: Users need no manual configuration, uses `user_access_token` throughout with automatic refresh on expiration
-- **Official Project**: Requires users to manually configure multiple parameters with complex setup
-
-### 🚀 Ultimate Usability Optimization
-- **This Project**: Deep optimization of tool size and structure, especially for complex features like document block creation and nested block creation tools, ensuring proper functionality in Cursor and other clients
-- **Official Project**: Simple API-to-MCP tool conversion, with some tools being too large and having usability issues in practice
-
-### 🌐 Cutting-Edge Infrastructure
-- Supports deployment on Cloudflare Workers, enjoying the industry's most advanced edge computing infrastructure
+- Uses a `user_access_token` to access resources as the signed-in user and refreshes the token automatically.
+- Runs as a remote MCP Server on Cloudflare Workers.
+- Provides focused, conversation-friendly tools for common operations; it is not a complete mapping of every Feishu OpenAPI.
+- Effective access is still limited by app scopes, user permissions, resource sharing, and group membership.
 
 ## ✨ Features
 
-- 🎯 **Zero-Configuration Experience**: No manual parameter configuration needed, automatic `user_access_token` management and refresh
+- 🎯 **Sign In and Use**: Client users do not paste Feishu tokens; the service manages `user_access_token` values and refreshes them
 - 🔐 **Feishu OAuth Authentication**: Secure user identity verification
 - 🌐 **Remote MCP Server**: Supports multi-client connections
 - 🚀 **Cloudflare Workers**: High-performance, globally distributed deployment with cutting-edge edge computing infrastructure
 - 🛠️ **Deeply Optimized Toolset**: Specially optimized for document creation, nested blocks, and other complex tools ensuring proper functionality across various clients
 - 🔧 **Local Development Support**: Convenient development and testing environment
-- ⚡ **Ultimate Usability**: Significant improvement in practical usage experience and stability compared to the official MCP Server
+- 📚 **Core Office Capabilities**: Common read/write operations for Docs, Sheets, Bitable, group messages, and Tasks
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 18+ and pnpm 10
 - Cloudflare account
 - Feishu Open Platform account
 
@@ -63,11 +54,11 @@ While Feishu officially released an MCP Server, this project has significant adv
 
 ```bash
 # Clone repository
-git clone <repository-url>
+git clone https://github.com/Roc-kit/open-feishu-mcp-server.git
 cd open-feishu-mcp-server
 
 # Install dependencies
-npm install
+pnpm install --frozen-lockfile
 ```
 
 ## 🚀 Deployment Methods
@@ -78,15 +69,19 @@ npm install
 
 1. Visit [Feishu Open Platform](https://open.feishu.cn/) and log in
 2. Click "Developer Console" and create a new application
-3. Configure permissions in application settings:
-   - Go to "Permissions & Features" and add the following permissions:
-     - "Get User ID" (auth:user.id:read)
-     - "Get User Task Information" (task:task:read)
-     - "Get User Authorization Credentials" (offline_access)
-     - "Get User Basic Information" (user_profile)
-     
-        ...
-4. Note your **App ID** and **App Secret**
+3. Add these **user-identity scopes** in Permission Management:
+   - Identity: `auth:user.id:read`, `offline_access`
+   - Docs and Drive: `docx:document:readonly`, `docx:document`, `docx:document:create`, `docx:document.block:convert`, `drive:drive`, `drive:file:upload`
+   - Sheets: `sheets:spreadsheet`
+   - Bitable: `bitable:app`
+   - Messaging: `im:chat:readonly`, `im:message`, `im:message:readonly`, `im:message.group_msg:get_as_user`, `im:message.send_as_user`
+   - Tasks: `task:task:read`, `task:task:write`
+   - Calendar read: `calendar:calendar.event:read`
+4. Enable the **Bot** capability under Add Features. Listing chats and reading/sending group messages depend on it.
+5. Create and publish an app version. After adding scopes or the Bot capability, publish again and have connected users reauthorize.
+6. Note your **App ID** and **App Secret**.
+
+> This project uses user-identity scopes; do not replace the scopes above with app-identity-only scopes. The signed-in user must also be a member of a target group chat.
 
 #### Step 2: Configure Cloudflare Environment
 
@@ -102,12 +97,12 @@ wrangler kv namespace create "OAUTH_KV"
 
 #### Step 3: Update Configuration File
 
-Update the KV namespace configuration in `wrangler.toml` with the KV ID obtained from Step 2.
+Update the KV namespace configuration in `wrangler.jsonc` with the KV ID obtained from Step 2.
 
 #### Step 4: Deploy Server
 
 ```bash
-npm run deploy
+pnpm deploy
 ```
 
 After deployment, note your actual subdomain (displayed in deployment logs).
@@ -115,6 +110,7 @@ After deployment, note your actual subdomain (displayed in deployment logs).
 #### Step 5: Configure Redirect URL
 
 Return to Feishu application settings:
+
 1. Go to "Security Settings"
 2. Add redirect URL: `https://feishu-mcp-server.<your-actual-subdomain>.workers.dev/callback`
 
@@ -137,7 +133,7 @@ Return to Feishu application settings:
 #### Start Local Server
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Server will run at `http://localhost:8788`.
@@ -153,6 +149,7 @@ npx @modelcontextprotocol/inspector@latest
 ```
 
 **Connection URLs**:
+
 - Production: `https://feishu-mcp-server.<your-subdomain>.workers.dev/sse`
 - Local: `http://localhost:8788/sse`
 
@@ -193,66 +190,43 @@ Or manual configuration:
 ## 🔐 Access Control
 
 - **Authentication**: Uses Feishu OAuth for user identity verification
-- **Permission Scope**: All authenticated Feishu users can access all tools
+- **Permission Scope**: Tool availability depends on OAuth scopes, the signed-in user's Feishu permissions, resource sharing, and group membership
 
-## 📋 Tool Development Roadmap
+## 📋 Implemented Tools
 
-### 🚧 Currently in Development (Feishu Documents)
-- **🔧 Development Assistant Tools**
-  - ✅ Developer document content search and recall
-- **📄 Document Basic Operations**
-  - ✅ Document block tree structure retrieval
-  - ✅ Get block type creation parameter schema
-  - ✅ Create document blocks (supports various block types)
-  - ✅ Update document block content
-  - ✅ Batch delete document blocks
-- **🔧 Document Advanced Features**
-  - ✅ Table creation and operations
-  - ✅ Image, video, file upload and insertion
-  - ✅ Markdown import functionality
-  - ✅ Media upload and management
-  - ✅ Document search
+- **Docs**: Create documents, read raw content and blocks, append Markdown/HTML, create/update/delete common blocks, read comments, and insert files/images.
+- **Sheets**: Create spreadsheets; query, add, copy, delete, and rename worksheets; read/write a single cell range; update view and protection settings.
+- **Bitable**: Create bases and tables; list tables, fields, and records; create, update, and delete records.
+- **Group messaging**: List chats that contain the signed-in user, read chat history, and send plain-text group messages as that user.
+- **Tasks**: List assigned tasks, create tasks assigned to the signed-in user, update tasks, complete/reopen tasks, and delete tasks.
 
-### 🎯 Future Plans
-- **📊 Spreadsheets (Sheets)**
-  - 📋 Worksheet basic operations (create, delete, rename)
-  - 📋 Cell data read/write
-  - 📋 Formula calculation and application
-  - 📋 Chart creation and editing
-  - 📋 Data filtering and sorting
-  - 📋 Collaboration and permission management
-
-- **🗃️ Multi-dimensional Tables (Base/Bitable)**
-  - 📋 Data table basic operations
-  - 📋 Record CRUD operations
-  - 📋 Field type management
-  - 📋 View creation and configuration
-  - 📋 Automation rule setup
-  - 📋 Data import/export
-
-  ...
-
-**Legend**: ✅ Completed | 🔄 In Development | 📋 Planned
+Not currently implemented: spreadsheet formulas/charts/filtering/sorting, Bitable field/view management, automation rules, and bulk import/export. The README no longer lists completed Sheets and Bitable basics as future work.
 
 ## 🛠️ Technical Architecture
 
 ### Architecture Components
 
 #### OAuth Provider
+
 Complete OAuth 2.1 server implementation that handles:
+
 - MCP client authentication
 - Feishu OAuth service connection management
 - Secure token management in KV storage
 
 #### Durable MCP
+
 MCP extension based on Cloudflare Durable Objects:
+
 - Persistent state management
 - Authentication context storage
 - User information access via `this.props`
 - Conditional tool availability based on user identity
 
 #### MCP Remote
+
 Supports remote MCP client connections:
+
 - Defines client-server communication protocol
 - Provides structured tool definition approach
 - Handles request/response serialization
@@ -263,20 +237,22 @@ Supports remote MCP client connections:
 ### MCP Server (Powered by [Cloudflare Workers](https://developers.cloudflare.com/workers/))
 
 This project implements dual OAuth roles:
-* Acts as OAuth **Server** to MCP clients
-* Acts as OAuth **Client** to Feishu OAuth service
+
+- Acts as OAuth **Server** to MCP clients
+- Acts as OAuth **Client** to Feishu OAuth service
 
 ### Tool Development
 
 Current tools use user access tokens for authentication, ensuring:
+
 - Secure Feishu API access
 - User permission-based feature access
 - Complete error handling and logging
 
 ---
 
-**📝 Note**: Ensure all environment variables and Feishu application settings are properly configured before deployment. If you encounter issues, please check Feishu application permission configuration and redirect URL settings. 
+**📝 Note**: Ensure all environment variables and Feishu application settings are properly configured before deployment. If you encounter issues, please check Feishu application permission configuration and redirect URL settings.
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=ztxtxwd/open-feishu-mcp-server&type=Date)](https://star-history.com/#ztxtxwd/open-feishu-mcp-server&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=Roc-kit/open-feishu-mcp-server&type=Date)](https://star-history.com/#Roc-kit/open-feishu-mcp-server&Date)

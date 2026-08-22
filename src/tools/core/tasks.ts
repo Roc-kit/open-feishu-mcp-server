@@ -26,6 +26,10 @@ type TaskListData = {
   page_token?: string;
 };
 
+type CurrentUserData = {
+  open_id?: string;
+};
+
 export function isTaskCompleted(task: TaskItem): boolean {
   const completedAt = task.completed_at ?? task.completed_time;
   return (completedAt !== undefined && completedAt !== null && String(completedAt) !== '0') || task.status === 'completed';
@@ -55,16 +59,15 @@ export function registerTaskCoreTools(server: McpServer, getAccessToken: () => s
     async ({ completed, page_size, page_token }) => {
       try {
         const data = await feishuRequest<TaskListData>('/task/v2/tasks', getAccessToken(), {
-          query: { page_size, page_token, user_id_type: 'open_id' },
+          query: { page_size, page_token, completed, user_id_type: 'open_id' },
         });
         const items = Array.isArray(data.items) ? data.items : Array.isArray(data.tasks) ? data.tasks : [];
-        const tasks = items.filter((task) => isTaskCompleted(task) === completed);
 
         return textResult({
-          count: tasks.length,
+          count: items.length,
           has_more: data.has_more ?? false,
           page_token: data.page_token ?? null,
-          tasks: tasks.map((task) => ({
+          tasks: items.map((task) => ({
             guid: task.guid ?? task.task_guid ?? null,
             summary: task.summary ?? task.name ?? '',
             description: task.description ?? '',
@@ -94,13 +97,26 @@ export function registerTaskCoreTools(server: McpServer, getAccessToken: () => s
     },
     async ({ summary, description, due }) => {
       try {
-        const data = await feishuRequest<Record<string, unknown>>('/task/v2/tasks', getAccessToken(), {
+        const accessToken = getAccessToken();
+        const currentUser = await feishuRequest<CurrentUserData>('/authen/v1/user_info', accessToken);
+        if (!currentUser.open_id) {
+          throw new Error('Feishu user info did not include open_id');
+        }
+
+        const data = await feishuRequest<Record<string, unknown>>('/task/v2/tasks', accessToken, {
           method: 'POST',
           query: { user_id_type: 'open_id' },
           body: {
             summary,
             description,
             due,
+            members: [
+              {
+                id: currentUser.open_id,
+                type: 'user',
+                role: 'assignee',
+              },
+            ],
             client_token: crypto.randomUUID(),
           },
         });
@@ -136,10 +152,14 @@ export function registerTaskCoreTools(server: McpServer, getAccessToken: () => s
           updateFields.push('description');
         }
         if (due !== undefined) {
-          if (due !== null) {task.due = due;}
+          if (due !== null) {
+            task.due = due;
+          }
           updateFields.push('due');
         }
-        if (updateFields.length === 0) {throw new Error('At least one field must be provided');}
+        if (updateFields.length === 0) {
+          throw new Error('At least one field must be provided');
+        }
 
         const data = await feishuRequest<Record<string, unknown>>(taskPath(task_guid), getAccessToken(), {
           method: 'PATCH',

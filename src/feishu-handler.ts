@@ -32,17 +32,10 @@ app.get('/.well-known/oauth-protected-resource', async (c) => {
 		introspection_endpoint: `${baseUrl}/introspect`,
 		introspection_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post"],
 		
-		// Scopes supported by this resource server
+		// Minimal scopes for the first PoC: identify user + refresh token + read Docx content.
 		scopes_supported: [
-			"drive:drive",
-			"drive:file", 
-			"drive:file:upload",
 			"auth:user.id:read",
 			"offline_access",
-			"task:task:read",
-			"docs:document:import",
-			"docs:document.media:upload",
-			"docx:document",
 			"docx:document:readonly"
 		],
 		
@@ -78,7 +71,7 @@ app.get('/authorize', async (c) => {
 			logo: "https://fms-r2.tapeless.eu.org/Frame%203.svg",
 			description: '这是一个远程服务，使用飞书进行认证。', // optional
 		},
-		state: { oauthReqInfo }, // arbitrary data that flows through the form submission below
+		state: { oauthReqInfo }, // arbitrary data that flows through the form submission
 	});
 });
 
@@ -99,7 +92,7 @@ async function redirectToFeishu(request: Request, oauthReqInfo: AuthRequest, hea
 			...headers,
 			location: getUpstreamAuthorizeUrl({
 				upstream_url: 'https://open.feishu.cn/open-apis/authen/v1/authorize',
-				scope: 'wiki:wiki wiki:wiki:readonly wiki:node:read drive:drive drive:file drive:file:upload auth:user.id:read offline_access task:task:read docs:document:import docs:document.media:upload docx:document docx:document:readonly docx:document.block:convert',
+				scope: 'auth:user.id:read offline_access docx:document:readonly',
 				client_id: env.FEISHU_APP_ID,
 				redirect_uri: new URL('/callback', request.url).href,
 				state: btoa(JSON.stringify(oauthReqInfo)),
@@ -154,7 +147,6 @@ app.get("/callback", async (c) => {
 		}
 	};
 	const { name, en_name, email, user_id } = userInfo.data;
-	// console.log('accessToken', accessToken);
 
 	// Return back to the MCP client a new token
 	const { redirectTo } = await c.env.OAUTH_PROVIDER.completeAuthorization({

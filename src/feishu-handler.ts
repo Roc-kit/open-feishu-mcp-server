@@ -8,6 +8,16 @@ import { clientIdAlreadyApproved, parseRedirectApproval, renderApprovalDialog } 
 
 const app = new Hono<{ Bindings: Env & { OAUTH_PROVIDER: OAuthHelpers } }>();
 
+const FEISHU_USER_SCOPES = [
+	"auth:user.id:read",
+	"offline_access",
+	"docx:document:readonly",
+	"docx:document",
+	"docx:document:create",
+	"task:task:read",
+	"calendar:calendar.event:read"
+] as const;
+
 // Add CORS middleware for well-known endpoints
 app.use('/.well-known/*', cors({
 	origin: '*',
@@ -32,14 +42,8 @@ app.get('/.well-known/oauth-protected-resource', async (c) => {
 		introspection_endpoint: `${baseUrl}/introspect`,
 		introspection_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post"],
 		
-		// Personal read PoC: identity + refresh token + Docs + Tasks + Calendar events.
-		scopes_supported: [
-			"auth:user.id:read",
-			"offline_access",
-			"docx:document:readonly",
-			"task:task:read",
-			"calendar:calendar.event:read"
-		],
+		// User OAuth scopes requested from Feishu.
+		scopes_supported: [...FEISHU_USER_SCOPES],
 		
 		// Bearer token usage
 		bearer_methods_supported: ["header", "body", "query"],
@@ -94,7 +98,7 @@ async function redirectToFeishu(request: Request, oauthReqInfo: AuthRequest, hea
 			...headers,
 			location: getUpstreamAuthorizeUrl({
 				upstream_url: 'https://open.feishu.cn/open-apis/authen/v1/authorize',
-				scope: 'auth:user.id:read offline_access docx:document:readonly task:task:read calendar:calendar.event:read',
+				scope: FEISHU_USER_SCOPES.join(' '),
 				client_id: env.FEISHU_APP_ID,
 				redirect_uri: new URL('/callback', request.url).href,
 				state: btoa(JSON.stringify(oauthReqInfo)),

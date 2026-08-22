@@ -17,6 +17,7 @@ import { wikiNodeInfoGet } from './tools/wiki/space';
 import { sheetRangeRead, sheetInfoGet,sheetPatch, sheetRangeWrite } from './tools/sheet';
 import { suiteSearch } from './tools/suite';
 import { docxMarkdownInsert } from './tools/document';
+import { registerPersonalReadTools } from './tools/personal-read';
 
 import {
   registerTools,
@@ -163,6 +164,7 @@ export class MyMCP extends McpAgent<Props, Env> {
     ];
 
     registerTools(this.server, allTools, context);
+    registerPersonalReadTools(this.server, () => this.props.accessToken as string);
   }
 }
 

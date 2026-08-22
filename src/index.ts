@@ -3,23 +3,6 @@ import { McpAgent } from 'agents/mcp';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Client } from '@larksuiteoapi/node-sdk';
 import { env } from 'cloudflare:workers';
-
-import { FeishuHandler } from './feishu-handler';
-import { Props, refreshUpstreamAuthToken } from './utils';
-import { oapiHttpInstance } from './utils/http-instance';
-import { RecallTool } from './mcp-tool/document-tool/recall';
-import { blockTreeTool, docxBlockBatchDelete, docxBlockPatch, docxInsertImage, docxInsertFile, docxMarkdownImport, docxV1BlockTypeSchemaGet, docxV1DocumentBlockChildrenCreateSimple } from './tools/document';
-import { mediaUploadTool } from './tools/drive';
-import { z } from 'zod';
-import { driveCommentBatch, driveCommentList,driveCommentPatch,driveCommentCreate,driveCommentGet } from './tools/drive/comment';
-import { driveReplyList, driveReplyUpdate, driveReplyDelete } from './tools/drive/reply';
-import { wikiNodeInfoGet } from './tools/wiki/space';
-import { sheetRangeRead, sheetInfoGet,sheetPatch, sheetRangeWrite } from './tools/sheet';
-import { suiteSearch } from './tools/suite';
-import { docxMarkdownInsert } from './tools/document';
-import { registerPersonalReadTools } from './tools/personal-read';
-import { registerCompatibilityTools } from './tools/compatibility';
-
 import {
   registerTools,
   // authen
@@ -27,7 +10,6 @@ import {
   // docx
   createDocument,
   getDocument,
-  convertContentToBlocks,
   // docx blocks
   listDocumentBlocks,
   createBlocks,
@@ -78,7 +60,11 @@ import {
   updateSpreadsheet,
 } from 'feishu-tools';
 
-import { GenTools } from './mcp-tool/tools/zh/gen-tools';
+import { FeishuHandler } from './feishu-handler';
+import { Props, refreshUpstreamAuthToken } from './utils';
+import { oapiHttpInstance } from './utils/http-instance';
+import { registerCompatibilityTools } from './tools/compatibility';
+import { registerCoreTools } from './tools/core';
 
 const client = new Client({
   appId: env.FEISHU_APP_ID,
@@ -90,17 +76,12 @@ export class MyMCP extends McpAgent<Props, Env> {
     name: 'Feishu OAuth Proxy Demo',
     version: '1.0.0',
   });
-  // 统一回调，打包params和client、userAccessToken，传给customHandler
-  async handler(params: any, customHandler: any) {
-    return await customHandler(params, client, this.props.accessToken);
-  }
-
   async init() {
     // Use the upstream access token to facilitate tools
     const context = {
       client: client,
       getUserAccessToken: () => this.props.accessToken as string,
-    }
+    };
 
     // 批量注册所有 feishu-tools 工具
     const allTools = [
@@ -109,7 +90,6 @@ export class MyMCP extends McpAgent<Props, Env> {
       // docx
       createDocument,
       getDocument,
-      convertContentToBlocks,
       // docx blocks
       listDocumentBlocks,
       createBlocks,
@@ -162,7 +142,7 @@ export class MyMCP extends McpAgent<Props, Env> {
 
     registerTools(this.server, allTools, context);
     registerCompatibilityTools(this.server, () => this.props.accessToken as string);
-    registerPersonalReadTools(this.server, () => this.props.accessToken as string);
+    registerCoreTools(this.server, () => this.props.accessToken as string);
   }
 }
 

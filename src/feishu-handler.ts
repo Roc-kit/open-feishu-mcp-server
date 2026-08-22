@@ -18,7 +18,14 @@ const FEISHU_USER_SCOPES = [
 	"drive:drive",
 	"drive:file:upload",
 	"sheets:spreadsheet",
+	"bitable:app",
+	"im:chat:readonly",
+	"im:message",
+	"im:message:readonly",
+	"im:message.group_msg:get_as_user",
+	"im:message.send_as_user",
 	"task:task:read",
+	"task:task:write",
 	"calendar:calendar.event:read"
 ] as const;
 

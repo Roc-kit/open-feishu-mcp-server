@@ -29,7 +29,7 @@
 	"kv_namespaces": [
 		{
 			"binding": "OAUTH_KV",
-			"id": "dedea7a6b9f84580a13a8be93f5ff7a6"
+			"id": "66bdff1f7b86418e86b6e1c9c46985a9"
 		}
 	],
 	"ai": {
@@ -72,7 +72,7 @@
 
 	/**
 	 * Service Bindings (communicate between multiple Workers)
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
+	 * https://developers.cloudflare.com/workers/configuration/#service-bindings
 	 */
 	// "services": [{ "binding": "MY_SERVICE", "service": "my-service" }]
 }
